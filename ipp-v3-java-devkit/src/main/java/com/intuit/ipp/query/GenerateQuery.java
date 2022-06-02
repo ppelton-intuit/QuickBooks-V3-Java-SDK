@@ -18,15 +18,14 @@ package com.intuit.ipp.query;
 import java.lang.reflect.Method;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Optional;
 
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.implementation.SuperMethodCall;
 import net.bytebuddy.matcher.ElementMatchers;
-import net.sf.cglib.proxy.Callback;
 import net.sf.cglib.proxy.CallbackFilter;
-import net.sf.cglib.proxy.Enhancer;
 
 import com.intuit.ipp.core.IEntity;
 import com.intuit.ipp.query.expr.BooleanPath;
@@ -35,13 +34,51 @@ import com.intuit.ipp.query.expr.EnumPath;
 import com.intuit.ipp.query.expr.NumberPath;
 import com.intuit.ipp.query.expr.StringPath;
 import com.intuit.ipp.util.Logger;
-import net.sf.cglib.proxy.NoOp;
 
 /**
  * Class used to generate the query string
  *
  */
 public final class GenerateQuery {
+
+//	static class ThreadLocalOverride<T> extends ThreadLocal<T> {
+//		public void set(T value) {
+//			this.value = value;
+//		}
+//
+//		@Override
+//		protected T initialValue() {
+//			return super.initialValue();
+//		}
+//
+//		boolean init = false;
+//		T value;
+//
+//		@Override
+//		public T get() {
+//			//return super.get();
+//
+////			Thread t = Thread.currentThread();
+////			ThreadLocalMap map = getMap(t);
+////			if (map != null) {
+////				ThreadLocalMap.Entry e = map.getEntry(this);
+////				if (e != null) {
+////					@SuppressWarnings("unchecked")
+////					T result = (T)e.value;
+////					return result;
+////				}
+////			}
+////			return setInitialValue();
+//
+//			if (init) {
+//				return value;
+//			}
+//
+//			this.value = initialValue();
+//			init = true;
+//			return this.value;
+//		}
+//	}
 
 	/**
 	 * logger instance
@@ -56,10 +93,11 @@ public final class GenerateQuery {
 	/**
 	 * variable path
 	 */
-	public static ThreadLocal<Path<?>> path = new ThreadLocal<Path<?>>();
+	// private static ThreadLocal<Path<?>> path = new ThreadLocal<Path<?>>();
+	private static Path<?> path = null;
 
 	/**
-	 * varriable message
+	 * variable message
 	 */
 	private static QueryMessage message = new QueryMessage();
 
@@ -115,7 +153,7 @@ public final class GenerateQuery {
 
 	@SuppressWarnings("unchecked")
 	public static <T> T createQueryEntity(Class<T> cl) {
-		Class<?> proxied = null;
+		Class<? extends T> proxied = null;
 		if (cl.isInterface()) {
 			LOG.debug("The given class is interface");
 		} else {
@@ -126,10 +164,14 @@ public final class GenerateQuery {
 					.method(ElementMatchers.isClone().or(ElementMatchers.isFinalizer()).or(ElementMatchers.isEquals()).or(ElementMatchers.isHashCode()).or(ElementMatchers.isToString()))
 					.intercept(SuperMethodCall.INSTANCE)
 					.make()
-					.load(cl.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
+					.load(cl.getClassLoader())
 					.getLoaded();
 		}
-		return (T) proxied;
+		try {
+			return (T) proxied.newInstance();
+		} catch (Exception x) {
+			throw new RuntimeException(x);
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -161,13 +203,13 @@ public final class GenerateQuery {
 	 * @return path the path
 	 */
 	public static Path<?> $(Object ret) {
-		Path<?> currentPath = path.get();
-		path.set(null);
+		Path<?> currentPath = path;
+		path = null;
 		if (currentPath != null) {
 			return new Path<Object>(currentPath.getPathString().concat(".*"), currentPath.getEntity());
 		} else {
 			String name = ret.getClass().getSimpleName();
-			String[] extracted = name.split("\\$\\$");
+			String[] extracted = name.split("\\$");
 			return new Path<Object>("*", extracted[0]);
 		}
 	}
@@ -180,8 +222,8 @@ public final class GenerateQuery {
 	 * @return
 	 */
 	public static CalendarPath $(Calendar ret) {
-		Path<?> currentPath = path.get();
-		path.set(null);
+		Path<?> currentPath = path;
+		path = null;
 		return new CalendarPath(currentPath.getPathString(), currentPath.getEntity());
 	}
 
@@ -192,8 +234,8 @@ public final class GenerateQuery {
 	 * @return CalendarPath the calendar path
 	 */
 	public static CalendarPath $(Date ret) {
-		Path<?> currentPath = path.get();
-		path.set(null);
+		Path<?> currentPath = path;
+		path = null;
 		return new CalendarPath(currentPath.getPathString(), currentPath.getEntity());
 	}
 
@@ -204,8 +246,8 @@ public final class GenerateQuery {
 	 * @return StringPath the string path
 	 */
 	public static StringPath $(String ret) {
-		Path<?> currentPath = path.get();
-		path.set(null);
+		Path<?> currentPath = path;
+		path = null;
 		return new StringPath(currentPath.getPathString(), currentPath.getEntity());
 	}
 
@@ -216,8 +258,8 @@ public final class GenerateQuery {
 	 * @return NumberPath the number path
 	 */
 	public static NumberPath $(Number ret) {
-		Path<?> currentPath = path.get();
-		path.set(null);
+		Path<?> currentPath = path;
+		path = null;
 		return new NumberPath(currentPath.getPathString(), currentPath.getEntity());
 	}
 
@@ -228,8 +270,8 @@ public final class GenerateQuery {
 	 * @return BooleanPath the boolean path
 	 */
 	public static BooleanPath $(Boolean ret) {
-		Path<?> currentPath = path.get();
-		path.set(null);
+		Path<?> currentPath = path;
+		path = null;
 		return new BooleanPath(currentPath.getPathString(), currentPath.getEntity());
 	}
 
@@ -240,8 +282,8 @@ public final class GenerateQuery {
 	 * @return EnumPath the enum path
 	 */
 	public static EnumPath $(Enum<?> ret) {
-		Path<?> currentPath = path.get();
-		path.set(null);
+		Path<?> currentPath = path;
+		path = null;
 		return new EnumPath(currentPath.getPathString(), currentPath.getEntity());
 	}
 
@@ -276,7 +318,7 @@ public final class GenerateQuery {
 		resetQueryMessage();
 		getMessage().setSQL("SELECT");
 		String name = entity.getClass().getSimpleName();
-		String extracted[] = name.split("\\$\\$");
+		String extracted[] = name.split("\\$");
 		getMessage().setCount(true);
 		if (extracted.length == LEN_3) {
 			getMessage().setEntity(extracted[0]);
@@ -307,6 +349,14 @@ public final class GenerateQuery {
 	 */
 	public static void resetQueryMessage() {
 		setMessage(new QueryMessage());
+	}
+
+	public static Path getPath() {
+		return path;
+	}
+
+	public static void setPath(Path path) {
+		GenerateQuery.path = path;
 	}
 
 	/**

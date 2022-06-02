@@ -16,6 +16,7 @@
 package com.intuit.ipp.query;
 
 import static com.intuit.ipp.query.GenerateQuery.$;
+import static com.intuit.ipp.query.GenerateQuery.createQueryEntity;
 import static com.intuit.ipp.query.GenerateQuery.select;
 import static com.intuit.ipp.query.GenerateQuery.selectCount;
 
@@ -27,6 +28,7 @@ import java.util.TimeZone;
 
 
 //import static org.junit.jupiter.api.Assertions.assertEquals;
+import com.intuit.ipp.data.Customer;
 import org.testng.Assert;
 
 
@@ -298,6 +300,13 @@ public class QueryTest {
 		String expectedQuery = "SELECT Line.* FROM Invoice";
 		LOG.debug(query);
 		Assert.assertEquals(expectedQuery, query);
+	}
+
+	@Test
+	public void testQuery_customer() {
+		Customer customer = createQueryEntity(Customer.class);
+		String query = select($(customer.getId()), $(customer.getDisplayName())).where($(customer.getId()).eq("10")).generate();
+		int foo = 1;
 	}
 
 	private String getCalendarAsString(Calendar cal) {
